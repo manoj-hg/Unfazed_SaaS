@@ -85,7 +85,8 @@ exports.googleAuth = async (req, res) => {
       try {
         const parts = req.body.credential.split('.');
         if (parts.length === 3) {
-          const payloadJson = Buffer.from(parts[1], 'base64').toString('utf-8');
+          const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+          const payloadJson = Buffer.from(base64, 'base64').toString('utf-8');
           const decoded = JSON.parse(payloadJson);
           email = decoded.email;
           name = decoded.name;
@@ -99,7 +100,7 @@ exports.googleAuth = async (req, res) => {
 
     if (!email && req.body.email) {
       email = req.body.email;
-      name = req.body.name || email.split('@')[0];
+      name = req.body.name;
       picture = req.body.picture || '';
       google_id = req.body.google_id || `google_${Date.now()}`;
     }
@@ -110,47 +111,68 @@ exports.googleAuth = async (req, res) => {
 
     email = email.toLowerCase().trim();
 
+    if (!name || name.trim() === '') {
+      const localPart = email.split('@')[0].replace(/[._-]/g, ' ');
+      name = 'Dr. ' + localPart.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+    }
+
+    if (!picture) {
+      picture = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}&backgroundColor=4f46e5`;
+    }
+
     let therapist = await Therapist.findOne({ email });
 
     if (!therapist) {
       // First time Google sign-in: create new practitioner account
-      const slug = await generateSlug(name || 'Dr. Practitioner');
+      const slug = await generateSlug(name);
       therapist = new Therapist({
         email,
-        name: name || 'Dr. Practitioner',
+        name,
         slug,
-        google_id,
-        avatar: picture || '',
+        google_id: google_id || `google_${Date.now()}`,
+        avatar: picture,
         title: 'Licensed Mental Health Practitioner',
         subscription_tier: 'free'
       });
       await therapist.save();
 
-      // Initialize default availability
-      const Availability = require('../models/Availability');
-      await Availability.create({
-        therapist_id: therapist._id,
-        session_duration: 60,
-        buffer_time: 15,
-        timezone: 'Asia/Kolkata',
-        weekly_schedule: {
-          monday: { isAvailable: true, start: "10:00", end: "18:00" },
-          tuesday: { isAvailable: true, start: "10:00", end: "18:00" },
-          wednesday: { isAvailable: true, start: "10:00", end: "18:00" },
-          thursday: { isAvailable: true, start: "10:00", end: "18:00" },
-          friday: { isAvailable: true, start: "10:00", end: "18:00" },
-          saturday: { isAvailable: false, start: "10:00", end: "14:00" },
-          sunday: { isAvailable: false, start: "10:00", end: "14:00" }
+      // Initialize default availability safely
+      try {
+        const Availability = require('../models/Availability');
+        const existingAvail = await Availability.findOne({ therapist_id: therapist._id });
+        if (!existingAvail) {
+          await Availability.create({
+            therapist_id: therapist._id,
+            session_duration: 60,
+            buffer_time: 15,
+            timezone: 'Asia/Kolkata',
+            weekly_schedule: {
+              monday: { isAvailable: true, start: "10:00", end: "18:00" },
+              tuesday: { isAvailable: true, start: "10:00", end: "18:00" },
+              wednesday: { isAvailable: true, start: "10:00", end: "18:00" },
+              thursday: { isAvailable: true, start: "10:00", end: "18:00" },
+              friday: { isAvailable: true, start: "10:00", end: "18:00" },
+              saturday: { isAvailable: false, start: "10:00", end: "14:00" },
+              sunday: { isAvailable: false, start: "10:00", end: "14:00" }
+            }
+          });
         }
-      });
+      } catch (availErr) {
+        console.warn('Availability initialization warning:', availErr.message);
+      }
     } else {
+      let shouldSave = false;
       if (!therapist.google_id && google_id) {
         therapist.google_id = google_id;
+        shouldSave = true;
       }
       if (!therapist.avatar && picture) {
         therapist.avatar = picture;
+        shouldSave = true;
       }
-      await therapist.save();
+      if (shouldSave) {
+        await therapist.save();
+      }
     }
 
     const payload = { id: therapist.id };
@@ -168,12 +190,13 @@ exports.googleAuth = async (req, res) => {
         email: therapist.email,
         slug: therapist.slug,
         subscription_tier: therapist.subscription_tier,
-        avatar: therapist.avatar
+        avatar: therapist.avatar,
+        title: therapist.title
       }
     });
   } catch (err) {
     console.error('[Google Auth Error]:', err);
-    res.status(500).json({ message: 'Google Authentication Server Error' });
+    res.status(500).json({ message: 'Google Authentication Server Error: ' + err.message });
   }
 };
 

@@ -10,7 +10,14 @@ connectDB();
 const server = http.createServer(app);
 
 const io = require('socket.io')(server, {
-  cors: { origin: process.env.CLIENT_URL || 'http://localhost:5173' }
+  cors: {
+    origin: (origin, callback) => {
+      // Allow requests from all origins (production domains, preview URLs, and localhost)
+      callback(null, true);
+    },
+    methods: ['GET', 'POST'],
+    credentials: true
+  }
 });
 require('./src/sockets/chatSocket')(io);
 
