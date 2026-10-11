@@ -41,13 +41,20 @@ export const AuthProvider = ({ children }) => {
     setUser(res.data.therapist);
   };
 
+  const loginWithGoogle = async (googlePayload) => {
+    const res = await axiosInstance.post('/auth/google', googlePayload);
+    localStorage.setItem('token', res.data.token);
+    setUser(res.data.therapist);
+    return res.data;
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, loginWithGoogle, logout }}>
       {children}
     </AuthContext.Provider>
   );

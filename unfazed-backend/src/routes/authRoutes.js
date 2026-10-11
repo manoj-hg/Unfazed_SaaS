@@ -24,5 +24,6 @@ router.post(
 );
 
 router.get('/me', authMiddleware, authController.getMe);
+router.post('/google', authController.googleAuth);
 
 module.exports = router;

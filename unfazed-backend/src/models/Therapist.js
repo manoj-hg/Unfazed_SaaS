@@ -10,7 +10,11 @@ const therapistSchema = new mongoose.Schema({
   },
   password_hash: {
     type: String,
-    required: true,
+    required: false,
+  },
+  google_id: {
+    type: String,
+    sparse: true,
   },
   name: {
     type: String,
@@ -20,7 +24,43 @@ const therapistSchema = new mongoose.Schema({
     type: String,
     unique: true,
   },
+  title: {
+    type: String,
+    default: 'Licensed Clinical Psychologist',
+  },
   bio: {
+    type: String,
+    default: '',
+  },
+  qualifications: {
+    type: String,
+    default: 'M.Phil Clinical Psychology, RCI Certified',
+  },
+  experience_years: {
+    type: Number,
+    default: 7,
+  },
+  city: {
+    type: String,
+    default: 'Bengaluru, India',
+  },
+  session_rate: {
+    type: Number,
+    default: 2000,
+  },
+  currency: {
+    type: String,
+    default: 'INR',
+  },
+  gstin: {
+    type: String,
+    default: '29AABCU9876Q1Z5',
+  },
+  phone: {
+    type: String,
+    default: '+91 98765 43210',
+  },
+  avatar: {
     type: String,
     default: '',
   },
@@ -32,7 +72,8 @@ const therapistSchema = new mongoose.Schema({
   }],
   subscription_tier: {
     type: String,
-    default: 'free'
+    default: 'free',
+    enum: ['free', 'pro', 'enterprise']
   }
 }, {
   timestamps: true
