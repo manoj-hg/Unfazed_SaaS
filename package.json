@@ -1,0 +1,13 @@
+{
+  "name": "unfazed-saas",
+  "version": "1.0.0",
+  "description": "Unfazed SaaS - All-in-one practice operating system for therapists in India",
+  "scripts": {
+    "start": "node unfazed-backend/server.js",
+    "build": "cd unfazed-backend && npm install",
+    "seed": "cd unfazed-backend && npm run seed"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
