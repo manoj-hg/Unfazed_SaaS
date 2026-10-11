@@ -1,0 +1,35 @@
+services:
+  # Unfazed Node.js/Express API Backend
+  - type: web
+    name: unfazed-backend
+    env: node
+    rootDir: unfazed-backend
+    buildCommand: npm install
+    startCommand: node server.js
+    plan: free
+    envVars:
+      - key: PORT
+        value: 5000
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: MONGO_URI
+        sync: false
+      - key: CLIENT_URL
+        sync: false
+
+  # Unfazed React / Vite Frontend
+  - type: web
+    name: unfazed-frontend
+    env: static
+    rootDir: unfazed-frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_BASE_URL
+        sync: false
